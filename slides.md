@@ -29,13 +29,14 @@ color: lime-light
 </div>
 
 
-<StickyNote color="gray-light" textAlign="center" width="260px" title="Developers and maintainers requirements" v-drag="[350,300,320,100]">
-Easy to test (will make it easier to code), but also modern, fun, and accessible to new developers
+<StickyNote color="orange-light" textAlign="center" width="260px" title="Developers and maintainers requirements" v-drag="[350,400,320,100]">
+Easy to test (will make it easier to code) ...
 </StickyNote>
 
-<!-- 
-This is not the first time that we rewrite DIRAC, but this time it is more profound, and to enforce this we decided to slightly change the name, adding a "fashionable" X at the end, and using a slightly different color scheme for the logo
--->
+<AdmonitionType type='Note' >
+This presentation is about "integration" and "system" tests, not about "unit" tests (which are developers' responsibility)
+</AdmonitionType>
+
 
 ---
 layout: top-title
@@ -70,26 +71,325 @@ Current production and only supported version, used by all DIRAC installations
 DIRAC v9 and DiracX 0.0.1 will be released together.
 </SpeechBubble>
 
+---
+layout: section
+color: cyan-light
+title: integration tests
+---
+
+# Integration tests
+
+
+---
+layout: top-title-two-cols
+color: gray-light
+align: c-lm-lm
+title: v8
+---
+
+:: title ::
+
+# DIRAC v8
+
+:: left ::
+
+```mermaid
+flowchart TD
+    C[Client]
+    P[Pilot]
+    subgraph Server [Server - docker compose]
+    D[DIRAC]
+    M[(MySql)]
+    O[(OpenSearch)]
+    I[(IAM)]
+    D --> M
+    D --> O
+    D --> I
+    end
+    C --> Server
+    P --> Server
+```
+
+
+:: right ::
+
+<AdmonitionType type='Note' >
+The Pilot is "yet another client", but "special"
+</AdmonitionType>
+
+
+- based on docker compose (link to [file](https://github.com/DIRACGrid/DIRAC/blob/integration/tests/CI/docker-compose.yml))
+- tests on different mysql and elastic/opensearch and IAM versions
+- the system creates a "fake" CA, and certificates
+- "server", "client" and "pilot"
+
+
+---
+layout: top-title-two-cols
+color: gray-light
+align: c-lm-lm
+title: v9
+---
+
+:: title ::
+
+# DIRAC v9+DiracXv0.0.1
+
+:: left ::
+
+```mermaid
+flowchart TD
+    C[Client]
+    P[Pilot]
+    Cx[DiracX Client]
+    subgraph Server [Server docker-compose]
+    D[DIRAC]
+    Dx[DiracX]
+    M[(MySql)]
+    O[(OpenSearch)]
+    I[(IAM)]
+    Mi[(MinIO)]
+    Dex[(Dex)]
+    D --> M
+    D --> O
+    D --> I
+    Dx --> M
+    Dx --> O
+    Dx --> I
+    Dx --> Mi
+    Dx --> Dex
+    end
+    C --> Server
+    P --> Server
+    Cx -.-> Server
+    style Cx fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
+```
+
+:: right ::
+
+- DiracX server is only running `uvicorn`, all DBs are from the docker-compose setup
+- Effectively, as of now there's no running legacy adaptor
+- The tests specific for DiracX code are run in the DiracX repo
+
+---
+layout: iframe-right
+url: https://github.com/DIRACGrid/DIRAC/actions/workflows/integration.yml
+color: gray-light
+align: lm
+title: how
+---
+
+# How to do this locally
+
+For getting the environment
+
+```sh
+git clone git@github.com:DIRACGrid/DIRAC.git
+cd DIRAC
+mamba create --name my-dirac-env -c conda-forge dirac-grid
+conda activate my-dirac-env
+pip install -e .
+```
+
+Know your options with:
+
+```sh
+./integration_tests.py --help 
+# "./integration_tests.py create" does the whole stuff
+```
+
+
+---
+layout: top-title-two-cols
+color: gray-light
+align: c-lm-lm
+title: DiracX
+---
+
+:: title ::
+
+# DiracX only
+
+:: left ::
+
+```mermaid
+flowchart TD
+    Cx[DiracX Client]
+    P[Pilot]
+    subgraph Server [Server K8]
+    Dx[DiracX]
+    M[(MySql)]
+    O[(OpenSearch)]
+    Mi[(MinIO)]
+    Dex[(Dex)]
+    Dx --> M
+    Dx --> O
+    Dx --> Mi
+    Dx --> Dex
+    end
+    Cx --> Server
+    P -.-> Server
+    style P fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
+```
+
+:: right ::
+
+
+**Notes**:
+- Based on [kind](https://kind.sigs.k8s.io/)
+  - runs the same helm charts used for actual servers
+- Uses mysql and opensearch
+  - attempt to use PostgreSQL failed because of "date format" issues
+- Run at every commit in GA
 
 ---
 layout: top-title
 color: gray-light
 align: c
-title: CLI
+title: DiracX-how
 ---
 
 :: title ::
 
-# CLI Interactions
+# In DiracX
 
 :: content ::
 
-**Run the demo (on your laptop):**
+Run a local `uvicorn` server with default configuration:
+
+```sh
+git clone https://github.com/DIRACGrid/diracx
+cd diracx
+mamba create --name my-diracx-env
+conda activate my-diracx-env
+pip install requirements-dev.txt
+./run_local.sh
+```
+
+SQL DBs are in `SQLite` (no similar option for OpenSearch, so still using sqlite).
+
+&nbsp;
+&nbsp;
+
+**Run the demo**
 
 ```sh
 git clone https://github.com/DIRACGrid/diracx-charts
-diracx-charts/run_demo.sh # this is run for each and every commit in Github Actions
+./diracx-charts/run_demo.sh # this is run for each and every commit in Github Actions
+pytest --demo-dir=../diracx-charts/
 ```
+
+
+---
+layout: top-title
+color: gray-light
+align: c
+title: withRucio
+---
+
+:: title ::
+
+# With Rucio?
+
+:: content ::
+
+
+```mermaid
+flowchart TD
+    C[Client]
+    P[Pilot]
+    Cx[DiracX Client]
+    R[Rucio Client]
+    subgraph Server
+    D[DIRAC]
+    Dx[DiracX]
+    RS[Rucio]
+    M[(MySql)]
+    O[(OpenSearch)]
+    I[(IAM)]
+    Mi[(MinIO)]
+    Dex[(Dex)]
+    D --> M
+    D --> O
+    D --> I
+    Dx --> M
+    Dx --> O
+    Dx --> I
+    Dx --> Mi
+    Dx --> Dex
+    end
+    C --> Server
+    P --> Server
+    Cx -.-> Server
+    R -.-> Server
+    style Cx fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
+    style R fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
+    style RS fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5
+```
+
+<SpeechBubble position="l" color='amber' shape="round"  v-drag="[700,200,140,145]">
+A hackathon topic?
+</SpeechBubble>
+
+<SpeechBubble position="t" color='amber' shape="round"  v-drag="[720,365,140,145]">
+Something from https://github.com/maxnoe/rucio-dirac-dev ?
+</SpeechBubble>
+
+
+---
+layout: section
+color: cyan-light
+title: integration tests
+---
+
+# Integration tests
+
+---
+layout: top-title
+color: gray-light
+align: c
+title: system
+---
+
+:: title ::
+
+# AKA adventures in the real world
+
+:: content ::
+
+Integration tests are for testing the "Grid in box", but for interacting with Grid resources we have a "real" Grid Setup:
+- sends "real" pilots and jobs, manages "real" data, uses "real" FTS, "real" IAM, ...
+- uses the `dteam` and `gridpp` VOs
+- we run "hackathons" there regularly (with boards from [github projects](https://github.com/orgs/DIRACGrid/projects))
+- `DiracX` is hosted on `paas.cern.ch` (OpenShift)
+- also for testing the WebApp(s)
+- very useful, but needs maintenance
+- all VOs have similar test setups
+
+
+---
+layout: top-title
+color: gray-light
+align: c
+title: SystemWithRucio
+---
+
+:: title ::
+
+# System tests, but with Rucio?
+
+:: content ::
+
+Adventures in the real world, but **with Rucio**?
+
+<SpeechBubble position="l" color='amber' shape="round"  v-drag="[580,100,170,125]">
+A hackathon topic?
+</SpeechBubble>
+
+<SpeechBubble position="t" color='amber' shape="round"  v-drag="[580,265,240,125]">
+Sort of a "demostrator"...
+</SpeechBubble>
+
 
 ---
 layout: section
@@ -100,17 +400,20 @@ title: Conclusions
 # To conclude
 
 ---
-layout: top-title-two-cols
-align: cm-cm-lm
+layout: top-title
+align: c
 color: orange-light
-columns: is-4
 title: summary
 --- 
 :: title ::
 
 # Summary
 
-:: left :: 
+:: content :: 
+
+- We can have Dirac+Rucio testing playground
+- I would keep it separate from both
+- Should be maintained by interested parties
 
 
 ---
@@ -132,3 +435,18 @@ title: Backup
 ---
 
 # Backup
+
+---
+layout: top-title
+color: gray-light
+align: c
+title: Pilot
+---
+
+:: title ::
+
+# Pilot tests
+
+:: content ::
+
+For testing different pilot configurations. Connect to the certification setup
