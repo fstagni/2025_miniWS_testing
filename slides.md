@@ -331,7 +331,7 @@ flowchart TD
 A hackathon topic?
 </SpeechBubble>
 
-<SpeechBubble position="t" color='amber' shape="round"  v-drag="[720,365,140,145]">
+<SpeechBubble position="t" color='amber' shape="round"  v-drag="[750,365,180,145]">
 Something from https://github.com/maxnoe/rucio-dirac-dev ?
 </SpeechBubble>
 
